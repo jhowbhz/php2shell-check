@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Inventário local de PHP2Shell (CVE-2026-109618 e CVE-2026-109619).
-# A versão numérica não basta: distribuições aplicam backport sem lançar
+# A versão numérica não basta: distribuições aplicam backport sem lança
 # o release upstream. Por isso o changelog do pacote também entra na conta.
 # O aviso do PHP trata a atualização como a única correção completa, então
 # configuração (memory_limit, ini, WAF) não muda o resultado daqui.
@@ -133,30 +133,33 @@ run_php() {
   fi
 }
 
-read_php_identity() {
-  local bin="$1"
-  local out="" line="" version="" sapi="" index=0
-
-  out="$(run_php "$bin" -n -r 'fwrite(STDOUT, PHP_VERSION."\n".PHP_SAPI."\n");' 2>/dev/null)" || true
-  if [[ -z "$out" ]] && [[ "$(basename "$bin")" == frankenphp* ]]; then
-    out="$(run_php "$bin" php-cli -n -r 'fwrite(STDOUT, PHP_VERSION."\n".PHP_SAPI."\n");' 2>/dev/null)" || true
-  fi
-
+parse_php_v() {
+  local line
+  # Parêntese da SAPI fica numa variável: dentro de [[ =~ ]] ele quebra o parser.
+  local banner_re='^PHP[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+[^[:space:]]*)[[:space:]]+\(([^)]+)\)'
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line//$'\r'/}"
-    index=$((index + 1))
-    if (( index == 1 )); then
-      version="$line"
-    elif (( index == 2 )); then
-      sapi="$line"
+    if [[ "$line" =~ $banner_re ]]; then
+      printf '%s\t%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+      return 0
     fi
-  done <<< "$out"
+  done
+  return 1
+}
 
-  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || return 1
-  if [[ -z "$sapi" ]]; then
-    sapi="desconhecida"
+read_php_identity() {
+  local bin="$1"
+  local out="" identity=""
+
+  # php-cgi não aceita -r. O banner de -v traz versão e SAPI sem executar código.
+  out="$(run_php "$bin" -n -v 2>&1)" || true
+  identity="$(printf '%s\n' "$out" | parse_php_v)" || true
+  if [[ -z "$identity" ]] && [[ "$(basename "$bin")" == frankenphp* ]]; then
+    out="$(run_php "$bin" version 2>/dev/null)" || true
+    identity="$(printf '%s\n' "$out" | parse_php_v)" || true
   fi
-  printf '%s\t%s\n' "$version" "$sapi"
+  [[ -n "$identity" ]] || return 1
+  printf '%s\n' "$identity"
 }
 
 is_runtime_package() {
@@ -354,9 +357,9 @@ judge_and_report() {
       else
         fix="$(fixed_release "$version")"
         if [[ -n "$fix" ]]; then
-          detail="A correção upstream desta linha é ${fix}. $(evidence_phrase "$evidence")."
+          detail="A correção upstream desta linha é ${fix}; $(evidence_phrase "$evidence")."
         else
-          detail="O PHP não publicou release corrigida para esta linha. O caminho suportado é 8.2.35, 8.3.36, 8.4.27 ou 8.5.12. $(evidence_phrase "$evidence")."
+          detail="O PHP não publicou release corrigida para esta linha. O caminho suportado é 8.2.35, 8.3.36, 8.4.27 ou 8.5.12; $(evidence_phrase "$evidence")."
         fi
         detail="${detail}${extra}"
         report "VULNERAVEL" "$title" "$detail"
@@ -420,7 +423,7 @@ inspect_binary() {
 
 scan_path_and_known_roots() {
   local oldifs="$IFS"
-  local dir
+  local di
   local -a dirs=()
 
   IFS=:
@@ -556,6 +559,14 @@ main() {
     --package-upstream)
       package_upstream "${2-}"
       exit $?
+      ;;
+    --parse-version-text)
+      parse_php_v
+      exit $?
+      ;;
+    --changelog-evidence)
+      fix_evidence "$(cat)"
+      exit 0
       ;;
     "")
       ;;

@@ -59,6 +59,42 @@ check_package "8.1.2-1ubuntu2.22" "8.1.2"
 check_package "8.3.36-1" "8.3.36"
 check_package "8.4.27" "8.4.27"
 
+check_banner() {
+  local banner="$1"
+  local expected="$2"
+  local got
+  got="$(printf '%s\n' "$banner" | bash "$script" --parse-version-text 2>/dev/null)" || true
+  if [[ "$got" != "$expected" ]]; then
+    printf 'FAIL banner [%s]: esperado [%s], veio [%s]\n' "$banner" "$expected" "$got"
+    fail=1
+  else
+    printf 'ok banner %s\n' "$expected"
+  fi
+}
+
+check_banner "PHP 8.5.10 (cli) (built: Aug 25 2026 21:23:48)" $'8.5.10\tcli'
+check_banner "PHP 8.5.10 (cgi-fcgi) (built: Aug 25 2026 21:23:48)" $'8.5.10\tcgi-fcgi'
+check_banner "PHP 8.3.36 (fpm-fcgi) (built: Oct 21 2026 12:00:00)" $'8.3.36\tfpm-fcgi'
+
+check_evidence() {
+  local payload="$1"
+  local expected="$2"
+  local got
+  got="$(printf '%s' "$payload" | bash "$script" --changelog-evidence 2>/dev/null)" || true
+  if [[ "$got" != "$expected" ]]; then
+    printf 'FAIL changelog [%s]: esperado %s, veio [%s]\n' "$payload" "$expected" "$got"
+    fail=1
+  else
+    printf 'ok changelog %s\n' "$expected"
+  fi
+}
+
+check_evidence "" "unavailable"
+check_evidence "Corrigido CVE-2026-109618." "partial"
+check_evidence "CVE-2026-109618 CVE-2026-109619" "both"
+check_evidence "GHSA-w8hw-w9fx-j79w GHSA-6wmf-4rv5-p3rp" "both"
+check_evidence "security update" "none"
+
 if [[ "$fail" -ne 0 ]]; then
   printf 'matriz de versao falhou\n'
   exit 1
