@@ -19,6 +19,29 @@ bash php2shell-check.sh
 Dentro de um container, rode o script **dentro** do container. O PHP da imagem
 não aparece na checagem do host.
 
+## Prints
+
+![Verificação geral mostrando PHP 8.5.10 como vulnerável nos binários php e php-cgi](docs/images/verificacao-geral.png)
+
+*Saída real nesta máquina de desenvolvimento: PHP 8.5.10, ainda sem a correção 8.5.12.*
+
+## Detecção pós-exploração
+
+Para procurar sinais que pedem investigação — filho estranho de worker,
+executável recente em pasta temporária, quebra de worker no log:
+
+```bash
+bash php2shell-check.sh --hunt
+```
+
+Sinal não é comprometimento confirmado. O que cada linha significa, a
+conferência manual e o que fazer se aparecer sinal forte estão em
+[HUNTING.md](HUNTING.md).
+
+![Detecção pós-exploração com um sinal forte em pasta temporária e itens para revisar](docs/images/deteccao-hunt.png)
+
+*Nesta máquina de desenvolvimento, o `/tmp` tem cache de ferramentas de build — por isso tantos `REVISAR`. Num servidor, a mesma lista costuma ser bem menor. As seções `INDEFINIDO` aparecem aqui porque esta captura não é de um Linux com Apache/PHP-FPM.*
+
 ## Como le
 
 | Linha | Significado |
@@ -61,6 +84,9 @@ trata a atualização como a única correção completa.
 
 ```bash
 bash tests/classify.sh
+bash tests/hunt.sh
 ```
 
-Conferir a matriz não lê o PHP da máquina. Só verifica se `8.5.11` continua vulnerável, `8.5.12` corrigido, e os demais cortes publicados.
+Conferir a matriz não lê o PHP da máquina. Só verifica se `8.5.11` continua vulnerável, `8.5.12` corrigido, e os demais cortes publicados. O segundo teste guarda o que a caça considera sinal forte, item de revisão ou linha comum.
+
+![Testes da matriz de versões e da caça de sinais passando](docs/images/testes.png)

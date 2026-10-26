@@ -19,10 +19,12 @@ SEEN_VERSIONS=""
 
 usage() {
   cat <<'EOF'
-Uso: php2shell-check.sh [--self-test]
+Uso: php2shell-check.sh [--self-test|--hunt]
 
 Lê os binários PHP, os processos PHP ainda em execução e os pacotes
 instalados nesta máquina. Não recebe host, URL nem IP, e não envia requisição.
+Com --hunt, encaminha para o php2shell-hunt.sh, que procura sinais
+defensivos pós-exploração nesta mesma máquina.
 
 Códigos de saída:
   0  nenhuma versão vulnerável confirmada
@@ -551,6 +553,10 @@ main() {
     --self-test)
       bash "$(cd "$(dirname "$0")" && pwd)/tests/classify.sh"
       exit $?
+      ;;
+    --hunt)
+      shift
+      exec bash "$(cd "$(dirname "$0")" && pwd)/php2shell-hunt.sh" "$@"
       ;;
     --classify)
       classify_upstream "${2-}"
