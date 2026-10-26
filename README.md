@@ -8,7 +8,7 @@ Ele não envia requisição, não recebe um host e não tenta acionar a falha.
 Compara a versão do binário com as releases corrigidas e, quando a versão ainda
 é antiga, procura as duas CVEs no changelog do pacote da distribuição.
 
-## Como rodar
+## Como roda
 
 No servidor Linux:
 
@@ -19,7 +19,7 @@ bash php2shell-check.sh
 Dentro de um container, rode o script **dentro** do container. O PHP da imagem
 não aparece na checagem do host.
 
-## Como ler
+## Como le
 
 | Linha | Significado |
 | --- | --- |
